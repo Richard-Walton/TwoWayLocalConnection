@@ -4,23 +4,23 @@ package com.dubitplatform.localConnection
 
 	public class LocalConnectionMessage extends AbstractMessage
 	{		
-		public function LocalConnectionMessage(messageId:String = null, functionName:String = null, functionArguments:Array = null)
+		private static const FUNCTION_NAME_HEADER:String = "f";
+		private static const FUNCTION_ARGUMENTS_HEADER:String = "a";
+		
+		public function LocalConnectionMessage(functionName:String = null, functionArguments:Array = null)
 		{
-			this.messageId = messageId;
-			this.headers = {
-				"fn": functionName,
-				"fa": functionArguments
-			}
+			headers[FUNCTION_NAME_HEADER] = functionName;
+			headers[FUNCTION_ARGUMENTS_HEADER] = functionArguments;
 		}
 		
 		public function get functionName() : String
 		{
-			return headers["fn"];
+			return headers[FUNCTION_NAME_HEADER];
 		}
 		
 		public function get functionArguments() : Array
 		{
-			return headers["fa"];
+			return headers[FUNCTION_ARGUMENTS_HEADER];
 		}
 	}
 }

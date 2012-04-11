@@ -34,7 +34,7 @@ package com.dubitplatform.localConnection
 		// outgoing messages
 		override flash_proxy function callProperty(name:*, ...parameters) : *
 		{	
-			return sendMessage(new LocalConnectionMessage(UIDUtil.createUID(), name, parameters));
+			return sendMessage(new LocalConnectionMessage(name, parameters));
 		}
 		
 		protected function receiveMessage(message:LocalConnectionMessage) : void
