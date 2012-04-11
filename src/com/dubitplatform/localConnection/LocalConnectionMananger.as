@@ -67,6 +67,15 @@ package com.dubitplatform.localConnection
 			
 			_state = CONNECTING;
 			
+			attemptToConnect(connectionName);
+		}
+		
+		protected function attemptToConnect(connectionName:String) : void
+		{
+			trace("connecting...");
+			
+			_inboundConnectionName = _outboundConnectionName = null;
+			
 			try
 			{
 				inboundConnection.connect(_inboundConnectionName = connectionName + "_1");
@@ -74,6 +83,7 @@ package com.dubitplatform.localConnection
 			}
 			catch(e:ArgumentError)
 			{
+				trace("failed 1");
 				try
 				{
 					inboundConnection.connect(_inboundConnectionName = connectionName + "_2");
@@ -81,27 +91,34 @@ package com.dubitplatform.localConnection
 				}
 				catch(e:ArgumentError)
 				{
+					trace("failed 2");
 					close();
 					
 					_state = CONNECTING;
 					
-					setTimeout(connect, RETRY_CONNECTION_INTERVAL, connectionName);
+					setTimeout(attemptToConnect, RETRY_CONNECTION_INTERVAL, connectionName);
 				}
 			}
 			
-			_state = CONNECTED;
+			if(inboundConnectionName && outboundConnectionName)
+			{
+				_state = CONNECTED;
+				trace("connected!");
+			}
 		}
 		
 		public function close() : void
 		{
-			if(_state == CONNECTED) inboundConnection.close() 
+			try
+			{
+				inboundConnection.close()
+			}
+			catch(e:ArgumentError)
+			{
+				
+			}
 		
 			_state = IDLE;
-		}
-		
-		public function sendOutbound(methodName:String, params:Array) : void
-		{
-			outboundConnection.send.apply(outboundConnection, [outboundConnectionName, methodName, params]);
 		}
 	}
 }

@@ -5,6 +5,7 @@ package com.dubitplatform.localConnection
 	public class LocalConnectionService extends EventDispatcher
 	{		
 		private var _localClient:Object;
+		private var _clientProxy:ClientProxy;
 		private var _connectionManager:LocalConnectionMananger;
 		
 		public function LocalConnectionService()
@@ -12,9 +13,10 @@ package com.dubitplatform.localConnection
 			var messages:Object = {};
 			
 			_connectionManager = new LocalConnectionMananger();
+			_clientProxy = new ClientProxy(this);
 			
-			connectionManager.inboundConnection.client = new LocalClientProxy(this, messages);
-			connectionManager.outboundConnection.client = new RemoteClientProxy(this, messages);
+			connectionManager.inboundConnection.client = _clientProxy
+			connectionManager.outboundConnection.client = _clientProxy;
 		}
 		
 		public function connect(connectionName:String) : void
@@ -44,7 +46,7 @@ package com.dubitplatform.localConnection
 				
 		public function get remoteClient() : Object
 		{
-			return connected ? connectionManager.outboundConnection.client : null;
+			return connected ? _clientProxy : null;
 		}
 	}
 }
