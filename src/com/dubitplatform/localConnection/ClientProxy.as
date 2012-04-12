@@ -30,10 +30,10 @@ package com.dubitplatform.localConnection
 		
 		private var lastAliveTime:int = -1;
 		
+		private var sentMessageTokens:Object;
 		private var messageHandlers:Object;
 		
 		private var localConnectionService:LocalConnectionService;
-		private var sentMessageTokens:Object;
 		
 		public function ClientProxy(localConnectionService:LocalConnectionService)
 		{
@@ -132,6 +132,7 @@ package com.dubitplatform.localConnection
 			for each(var token:AsyncToken in sentMessageTokens)
 			{
 				var message:IMessage = token.message;
+				
 				var timeSinceMessageSent:int = currentTime - message.timestamp;
 				
 				if(timeSinceMessageSent > TIMEOUT)

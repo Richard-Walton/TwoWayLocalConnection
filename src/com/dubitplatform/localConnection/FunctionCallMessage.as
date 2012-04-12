@@ -4,7 +4,7 @@ package com.dubitplatform.localConnection
 	
 	import mx.messaging.messages.AbstractMessage;
 
-	public class FunctionCallMessage extends AbstractMessage
+	internal class FunctionCallMessage extends AbstractMessage
 	{		
 		private static const FUNCTION_NAME_HEADER:String = "f";
 		private static const FUNCTION_ARGUMENTS_HEADER:String = "a";
