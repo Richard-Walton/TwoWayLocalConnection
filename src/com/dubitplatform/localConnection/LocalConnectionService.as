@@ -1,7 +1,7 @@
 package com.dubitplatform.localConnection
 {
-	import flash.events.Event;
 	import flash.events.EventDispatcher;
+	import flash.events.StatusEvent;
 	
 	public class LocalConnectionService extends EventDispatcher
 	{		
@@ -19,20 +19,10 @@ package com.dubitplatform.localConnection
 			connectionManager.inboundConnection.client = _clientProxy
 			connectionManager.outboundConnection.client = _clientProxy;
 			
-			connectionManager.addEventListener(Event.INIT, function(e:Event) : void
+			connectionManager.addEventListener(StatusEvent.STATUS, function(e:StatusEvent) : void
 			{
-				trace("INIT");
+				trace(e.code)
 			});
-			
-			connectionManager.addEventListener(Event.CONNECT, function(e:Event) : void
-			{
-				trace("CONNECTED");
-			});
-			
-			connectionManager.addEventListener(Event.CLOSE, function(e:Event) : void
-			{
-				trace("CLOSED");
-			})
 		}
 		
 		public function connect(connectionName:String) : void
@@ -42,7 +32,7 @@ package com.dubitplatform.localConnection
 		
 		public function close() : void
 		{
-			connectionManager.close();
+			if(connected) connectionManager.close();
 		}
 		
 		public function get connectionManager() : LocalConnectionMananger
@@ -52,7 +42,8 @@ package com.dubitplatform.localConnection
 		
 		public function get connected() : Boolean
 		{
-			return connectionManager.state == LocalConnectionMananger.CONNECTED;
+			return connectionManager.status == LocalConnectionMananger.CONNECTED
+				|| connectionManager.status == LocalConnectionMananger.CLOSING;
 		}
 		
 		public function get localClient() : Object
@@ -67,7 +58,7 @@ package com.dubitplatform.localConnection
 				
 		public function get remoteClient() : Object
 		{
-			return connected ? _clientProxy : null;
+			return _clientProxy;
 		}
 	}
 }

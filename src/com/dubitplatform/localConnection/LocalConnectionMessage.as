@@ -1,5 +1,7 @@
 package com.dubitplatform.localConnection
 {
+	import flash.utils.getTimer;
+	
 	import mx.messaging.messages.AbstractMessage;
 
 	public class LocalConnectionMessage extends AbstractMessage
@@ -13,6 +15,7 @@ package com.dubitplatform.localConnection
 			
 			message.headers[FUNCTION_NAME_HEADER] = functionName;
 			message.headers[FUNCTION_ARGUMENTS_HEADER] = functionArguments;
+			message.timestamp = getTimer();
 			
 			return message;
 		}

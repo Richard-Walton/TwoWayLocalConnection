@@ -2,22 +2,20 @@ package com.dubitplatform.localConnection
 {
 	import avmplus.getQualifiedClassName;
 	
-	import flash.events.Event;
 	import flash.events.EventDispatcher;
+	import flash.events.StatusEvent;
 	import flash.net.LocalConnection;
 	import flash.net.registerClassAlias;
 	import flash.utils.setTimeout;
 
-	[Event(name="init", type="flash.events.Event")]
-	[Event(name="connect", type="flash.events.Event")]
-	[Event(name="closing", type="flash.events.Event")]
-	[Event(name="close", type="flash.events.Event")]
+	[Event(name="status", type="flash.events.StatusEvent")]
 	public class LocalConnectionMananger extends EventDispatcher
 	{
-		public static const IDLE:int = 0;
-		public static const CONNECTING:int = 1;
-		public static const HAND_SHAKE:int = 2;
-		public static const CONNECTED:int = 3;
+		public static const IDLE:String = "idle";
+		public static const CONNECTING:String = "connecting";
+		public static const WAITING_FOR_REMOTE_CLIENT:String = "waitingForRemoteClient";
+		public static const CONNECTED:String = "connected";
+		public static const CLOSING:String = "closing";
 		
 		private static const RETRY_CONNECTION_INTERVAL:int = 500;
 		
@@ -27,7 +25,7 @@ package com.dubitplatform.localConnection
 		private var _inboundConnectionName:String;
 		private var _outboundConnectionName:String;
 		
-		private var _state:int;
+		private var _status:String;
 		
 		public function LocalConnectionMananger(inboundConnection:LocalConnection = null, outboundConnection:LocalConnection = null)
 		{
@@ -36,12 +34,17 @@ package com.dubitplatform.localConnection
 			_inboundConnection = inboundConnection || new LocalConnection();
 			_outboundConnection = outboundConnection || new LocalConnection();
 			
+			var errorEventSwallower:Function = function(e:StatusEvent) : void {}
+			
+			_inboundConnection.addEventListener(StatusEvent.STATUS, errorEventSwallower);
+			_outboundConnection.addEventListener(StatusEvent.STATUS, errorEventSwallower);
+			
 			_inboundConnectionName = null;
 			_outboundConnectionName = null;
 			
-			_state = IDLE;
+			_status = IDLE;
 		}
-		
+
 		public function get inboundConnection() : LocalConnection
 		{
 			return _inboundConnection;
@@ -62,24 +65,31 @@ package com.dubitplatform.localConnection
 			return _outboundConnectionName;
 		}
 		
-		public function get state() : int
+		public function get status() : String
 		{
-			return _state;
+			return _status;
+		}
+		
+		internal function updateStatus(newStatus:String) : void
+		{
+			_status = newStatus;
+			
+			dispatchEvent(new StatusEvent(StatusEvent.STATUS, false, false, status, status));
 		}
 		
 		public function connect(connectionName:String) : void
 		{
-			if(state != IDLE) return;
+			if(status != IDLE) return;
 			
-			_state = CONNECTING;
-			
-			dispatchEvent(new Event(Event.INIT));
+			updateStatus(CONNECTING);
 			
 			attemptToConnect(connectionName);
 		}
 		
 		protected function attemptToConnect(connectionName:String) : void
-		{			
+		{
+			if(status != CONNECTING) return;
+			
 			_inboundConnectionName = _outboundConnectionName = null;
 			
 			try
@@ -102,14 +112,14 @@ package com.dubitplatform.localConnection
 			
 			if(inboundConnectionName && outboundConnectionName)
 			{
-				_state = CONNECTED;
-				
-				dispatchEvent(new Event(Event.CONNECT));
+				updateStatus(WAITING_FOR_REMOTE_CLIENT);
 			}
 		}
 		
 		public function close() : void
 		{
+			updateStatus(CLOSING);
+			
 			try
 			{
 				inboundConnection.close()
@@ -119,9 +129,7 @@ package com.dubitplatform.localConnection
 				
 			}
 		
-			_state = IDLE;
-			
-			dispatchEvent(new Event(Event.CLOSE));
+			updateStatus(IDLE);
 		}
 	}
 }
