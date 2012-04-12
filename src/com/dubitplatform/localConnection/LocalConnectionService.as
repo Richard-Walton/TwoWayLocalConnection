@@ -30,10 +30,11 @@ package com.dubitplatform.localConnection
 		private var _localClient:Object;
 		private var _clientProxy:ClientProxy;
 		
-		public function LocalConnectionService()
+		public function LocalConnectionService(localClient:Object = null)
 		{			
 			registerClassAlias(getQualifiedClassName(FunctionCallMessage), FunctionCallMessage);
 			
+			_localClient = localClient;
 			_clientProxy = new ClientProxy(this);
 			
 			_inboundConnection = createAndSetupLocalConnection(_clientProxy);			
@@ -80,6 +81,9 @@ package com.dubitplatform.localConnection
 			return _status;
 		}
 		
+		/**
+		 * @see flash.net.LocalConnection#client()
+		 */   
 		public function get localClient() : Object
 		{
 			return _localClient;
@@ -102,11 +106,34 @@ package com.dubitplatform.localConnection
 			dispatchEvent(new StatusEvent(StatusEvent.STATUS, false, false, status, status));
 		}
 		
+		/**
+		 * @see flash.net.LocalConnection#allowDomain()
+		 */  
+		public function allowDomain(... domains) : void
+		{
+			inboundConnection.allowDomain.apply(null, domains);
+			outboundConnection.allowDomain.apply(null, domains);
+		}
+		
+		/**
+		 * @see flash.net.LocalConnection#allowInsecureDomain()
+		 */          
+		public function allowInsecureDomain(... domains) : void
+		{
+			inboundConnection.allowInsecureDomain.apply(null, domains);
+			outboundConnection.allowInsecureDomain.apply(null, domains);
+		}
+		
+		/**
+		 * @see flash.net.LocalConnection#connect()
+		 */   
 		public function connect(connectionName:String) : void
 		{
 			if(status != IDLE) return;
 			
 			updateStatus(CONNECTING);
+			
+			if(connectionName.charAt(0) != "_") connectionName = "_" + connectionName;
 			
 			attemptToConnect(connectionName + "_1", connectionName + "_2");
 		}
@@ -116,6 +143,9 @@ package com.dubitplatform.localConnection
 			return status == CONNECTED || status == CLOSING;
 		}
 		
+		/**
+		 * @see flash.net.LocalConnection#close()
+		 */   
 		public function close() : void
 		{
 			updateStatus(CLOSING);
