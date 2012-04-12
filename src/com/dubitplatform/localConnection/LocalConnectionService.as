@@ -36,13 +36,8 @@ package com.dubitplatform.localConnection
 			
 			_localClient = localClient;
 			_clientProxy = new ClientProxy(this);
-			
 			_inboundConnection = createAndSetupLocalConnection(_clientProxy);			
 			_outboundConnection = createAndSetupLocalConnection(_clientProxy);
-			
-			_inboundConnectionName = null;
-			_outboundConnectionName = null;
-			
 			_status = IDLE;
 		}
 		
@@ -75,12 +70,7 @@ package com.dubitplatform.localConnection
 		{
 			return _outboundConnectionName;
 		}
-		
-		public function get status() : String
-		{
-			return _status;
-		}
-		
+				
 		/**
 		 * @see flash.net.LocalConnection#client()
 		 */   
@@ -97,6 +87,11 @@ package com.dubitplatform.localConnection
 		public function get remoteClient() : Object
 		{
 			return _clientProxy;
+		}
+		
+		public function get status() : String
+		{
+			return _status;
 		}
 		
 		internal function updateStatus(newStatus:String) : void
@@ -153,6 +148,9 @@ package com.dubitplatform.localConnection
 			try { inboundConnection.close() }
 			catch(e:ArgumentError) {}
 			
+			_inboundConnectionName = null;
+			_outboundConnectionName = null;
+			
 			updateStatus(IDLE);
 		}
 		
@@ -160,27 +158,32 @@ package com.dubitplatform.localConnection
 		{
 			if(status != CONNECTING) return;
 			
-			var successfulConnectionName:String = tryConnectWith(connectionA) || tryConnectWith(connectionB);
-			
-			if(successfulConnectionName)
+			var successFunction:Function = function(successfulConnectionName:String) : void
 			{
 				_inboundConnectionName = successfulConnectionName;
 				_outboundConnectionName = successfulConnectionName == connectionA ? connectionB : connectionA;
 				
-				updateStatus(WAITING_FOR_REMOTE_CLIENT);
-			}
-			else
+				updateStatus(WAITING_FOR_REMOTE_CLIENT);	
+			};
+			
+			if(!(tryConnectWith(connectionA, successFunction) || tryConnectWith(connectionB, successFunction)))
 			{
+				successFunction = null;
+				
 				setTimeout(attemptToConnect, RETRY_CONNECTION_INTERVAL, connectionA, connectionB);
 			}
 		}
 		
-		private function tryConnectWith(connectionName:String) : String
+		private function tryConnectWith(connectionName:String, successFunction:Function) : Boolean
 		{	
-			try { inboundConnection.connect(connectionName) }
-			catch(e:ArgumentError) { connectionName = null }
+			var success:Boolean = true;
 			
-			return connectionName;
+			try { inboundConnection.connect(connectionName) }
+			catch(e:ArgumentError) { success = false }
+			
+			if(success) successFunction(connectionName);
+			
+			return success;
 		}
 	}
 }
