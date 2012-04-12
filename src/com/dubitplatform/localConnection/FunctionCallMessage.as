@@ -4,14 +4,14 @@ package com.dubitplatform.localConnection
 	
 	import mx.messaging.messages.AbstractMessage;
 
-	public class LocalConnectionMessage extends AbstractMessage
+	public class FunctionCallMessage extends AbstractMessage
 	{		
 		private static const FUNCTION_NAME_HEADER:String = "f";
 		private static const FUNCTION_ARGUMENTS_HEADER:String = "a";
 		
-		public static function create(functionName:String, functionArguments:Array) : LocalConnectionMessage
+		public static function create(functionName:String, functionArguments:Array) : FunctionCallMessage
 		{
-			var message:LocalConnectionMessage = new LocalConnectionMessage();
+			var message:FunctionCallMessage = new FunctionCallMessage();
 			
 			message.headers[FUNCTION_NAME_HEADER] = functionName;
 			message.headers[FUNCTION_ARGUMENTS_HEADER] = functionArguments;

@@ -22,7 +22,7 @@ package com.dubitplatform.localConnection
 	{	
 		private static const FUNCTION_CALL_METHOD:String = "functionCall";
 		private static const FUNCTION_RETURN_METHOD:String = "functionReturn";
-		private static const NOTIFY_ALIVE:String = "notifyAlive";
+		private static const NOTIFY_ALIVE_METHOD:String = "notifyAlive";
 		
 		private static const KEEP_ALIVE_INTERVAL:int = 1000;
 		private static const TIMEOUT_CHECK_INTERVAL:int = 5000;
@@ -44,21 +44,19 @@ package com.dubitplatform.localConnection
 			messageHandlers = {};
 			messageHandlers[FUNCTION_CALL_METHOD] = handleFunctionCall;
 			messageHandlers[FUNCTION_RETURN_METHOD] = handleFunctionReturn;		
-			messageHandlers[NOTIFY_ALIVE] = handleNotifyAlive;
+			messageHandlers[NOTIFY_ALIVE_METHOD] = handleNotifyAlive;
 			
 			var timeoutIntervalID:uint = 0;
 			var sendAliveIntervalID:uint = 0;
 			
-			var connectionManager:LocalConnectionMananger = localConnectionService.connectionManager;
-			
-			connectionManager.addEventListener(StatusEvent.STATUS, function(e:StatusEvent) : void
+			localConnectionService.addEventListener(StatusEvent.STATUS, function(e:StatusEvent) : void
 			{
-				if(connectionManager.status == LocalConnectionMananger.WAITING_FOR_REMOTE_CLIENT)
+				if(localConnectionService.status == LocalConnectionService.WAITING_FOR_REMOTE_CLIENT)
 				{
 					timeoutIntervalID = setInterval(checkForTimeouts, TIMEOUT_CHECK_INTERVAL);
-					sendAliveIntervalID = setInterval(sendMessage, KEEP_ALIVE_INTERVAL, NOTIFY_ALIVE);
+					sendAliveIntervalID = setInterval(sendMessage, KEEP_ALIVE_INTERVAL, NOTIFY_ALIVE_METHOD);
 				}
-				else if(connectionManager.status == LocalConnectionMananger.CLOSING)
+				else if(localConnectionService.status == LocalConnectionService.CLOSING)
 				{
 					clearInterval(timeoutIntervalID);
 					clearInterval(sendAliveIntervalID);
@@ -75,28 +73,21 @@ package com.dubitplatform.localConnection
 		// outgoing messages
 		override flash_proxy function callProperty(name:*, ...parameters) : *
 		{		
-			if(!localConnectionService.connected) throw new IllegalOperationError("LocalConnectionService is not yet connected");
+			if(!localConnectionService.connected) throw new IllegalOperationError("LocalConnectionService is not connected");
 			
-			return sendMessage(FUNCTION_CALL_METHOD, LocalConnectionMessage.create(name, parameters));
+			return sendMessage(FUNCTION_CALL_METHOD, FunctionCallMessage.create(name, parameters));
 		}
 		
-		protected function handleFunctionCall(message:LocalConnectionMessage) : void
+		protected function handleFunctionCall(message:FunctionCallMessage) : void
 		{
 			var handlerFunction:Function = localConnectionService.localClient[message.functionName];
 			
-			if(handlerFunction.length > 0) 
-			{
-				message.body = handlerFunction.apply(null, message.functionArguments);
+			message.body = handlerFunction.apply(null, message.functionArguments);
 				
-				sendMessage(FUNCTION_RETURN_METHOD, message, false);
-			}
-			else
-			{
-				handlerFunction();
-			}
+			sendMessage(FUNCTION_RETURN_METHOD, message, false);
 		}
 		
-		protected function handleFunctionReturn(message:IMessage) : void
+		protected function handleFunctionReturn(message:FunctionCallMessage) : void
 		{
 			var responseHandler:AsyncToken = sentMessageTokens[message.messageId];
 			
@@ -113,21 +104,23 @@ package com.dubitplatform.localConnection
 			var token:AsyncToken = null;
 			
 			if(message && expectResponse) sentMessageTokens[message.messageId] = token = new AsyncToken(message);
-
-			var connectionManager:LocalConnectionMananger = localConnectionService.connectionManager;
 			
-			connectionManager.outboundConnection.send(connectionManager.outboundConnectionName, methodName, message);
+			var sendFunctionParams:Array = [localConnectionService.outboundConnectionName, methodName];
+			
+			if(message) sendFunctionParams.push(message);
+			
+			localConnectionService.outboundConnection.send.apply(null, sendFunctionParams);
 			
 			return token;
 		}
 		
-		protected function handleNotifyAlive(values:Array) : void
+		protected function handleNotifyAlive() : void
 		{
 			lastAliveTime = getTimer();
 			
 			if(! localConnectionService.connected) 
 			{				
-				localConnectionService.connectionManager.updateStatus(LocalConnectionMananger.CONNECTED);
+				localConnectionService.updateStatus(LocalConnectionService.CONNECTED);
 			}
 		}
 		
