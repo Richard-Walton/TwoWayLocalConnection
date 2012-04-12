@@ -7,10 +7,14 @@ package com.dubitplatform.localConnection
 		private static const FUNCTION_NAME_HEADER:String = "f";
 		private static const FUNCTION_ARGUMENTS_HEADER:String = "a";
 		
-		public function LocalConnectionMessage(functionName:String = null, functionArguments:Array = null)
+		public static function create(functionName:String, functionArguments:Array) : LocalConnectionMessage
 		{
-			headers[FUNCTION_NAME_HEADER] = functionName;
-			headers[FUNCTION_ARGUMENTS_HEADER] = functionArguments;
+			var message:LocalConnectionMessage = new LocalConnectionMessage();
+			
+			message.headers[FUNCTION_NAME_HEADER] = functionName;
+			message.headers[FUNCTION_ARGUMENTS_HEADER] = functionArguments;
+			
+			return message;
 		}
 		
 		public function get functionName() : String

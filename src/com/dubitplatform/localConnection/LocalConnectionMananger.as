@@ -2,11 +2,17 @@ package com.dubitplatform.localConnection
 {
 	import avmplus.getQualifiedClassName;
 	
+	import flash.events.Event;
+	import flash.events.EventDispatcher;
 	import flash.net.LocalConnection;
 	import flash.net.registerClassAlias;
 	import flash.utils.setTimeout;
 
-	public class LocalConnectionMananger
+	[Event(name="init", type="flash.events.Event")]
+	[Event(name="connect", type="flash.events.Event")]
+	[Event(name="closing", type="flash.events.Event")]
+	[Event(name="close", type="flash.events.Event")]
+	public class LocalConnectionMananger extends EventDispatcher
 	{
 		public static const IDLE:int = 0;
 		public static const CONNECTING:int = 1;
@@ -67,13 +73,13 @@ package com.dubitplatform.localConnection
 			
 			_state = CONNECTING;
 			
+			dispatchEvent(new Event(Event.INIT));
+			
 			attemptToConnect(connectionName);
 		}
 		
 		protected function attemptToConnect(connectionName:String) : void
-		{
-			trace("connecting...");
-			
+		{			
 			_inboundConnectionName = _outboundConnectionName = null;
 			
 			try
@@ -83,19 +89,13 @@ package com.dubitplatform.localConnection
 			}
 			catch(e:ArgumentError)
 			{
-				trace("failed 1");
 				try
 				{
 					inboundConnection.connect(_inboundConnectionName = connectionName + "_2");
 					_outboundConnectionName = connectionName + "_1";
 				}
 				catch(e:ArgumentError)
-				{
-					trace("failed 2");
-					close();
-					
-					_state = CONNECTING;
-					
+				{					
 					setTimeout(attemptToConnect, RETRY_CONNECTION_INTERVAL, connectionName);
 				}
 			}
@@ -103,7 +103,8 @@ package com.dubitplatform.localConnection
 			if(inboundConnectionName && outboundConnectionName)
 			{
 				_state = CONNECTED;
-				trace("connected!");
+				
+				dispatchEvent(new Event(Event.CONNECT));
 			}
 		}
 		
@@ -119,6 +120,8 @@ package com.dubitplatform.localConnection
 			}
 		
 			_state = IDLE;
+			
+			dispatchEvent(new Event(Event.CLOSE));
 		}
 	}
 }

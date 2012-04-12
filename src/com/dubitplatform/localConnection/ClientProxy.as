@@ -5,42 +5,43 @@ package com.dubitplatform.localConnection
 	import flash.utils.flash_proxy;
 	
 	import mx.core.mx_internal;
+	import mx.messaging.messages.IMessage;
 	import mx.rpc.AsyncToken;
 	import mx.rpc.events.ResultEvent;
-	import mx.utils.UIDUtil;
 	
 	use namespace flash_proxy;
 	
 	internal class ClientProxy extends Proxy
 	{	
+		private static const FUNCTION_CALL_METHOD:String = "functionCall";
+		private static const FUNCTION_RETURN_METHOD:String = "functionReturn";
+		
+		private var messageHandlers:Object;
+		
 		private var localConnectionService:LocalConnectionService;
 		private var sentMessageTokens:Object;
 		
 		public function ClientProxy(localConnectionService:LocalConnectionService)
 		{
-			this.localConnectionService = localConnectionService;		
-			this.sentMessageTokens = {};
+			this.localConnectionService = localConnectionService;
+			
+			sentMessageTokens = {};
+			
+			messageHandlers = {};
+			messageHandlers[FUNCTION_CALL_METHOD] = handleFunctionCall;
+			messageHandlers[FUNCTION_RETURN_METHOD] = handleFunctionReturn;
 		}
 		
 		// incoming messages
 		override flash_proxy function getProperty(name:*) : *
-		{			
-			return function(...params) : void
-			{
-				if(params.length == 1 && params[0] is LocalConnectionMessage) receiveMessage(params[0]);
-			}
+		{	
+			return messageHandlers[name];
 		}
 		
 		// outgoing messages
 		override flash_proxy function callProperty(name:*, ...parameters) : *
-		{	
-			return sendMessage(new LocalConnectionMessage(name, parameters));
-		}
-		
-		protected function receiveMessage(message:LocalConnectionMessage) : void
-		{
-			if(! sentMessageTokens.hasOwnProperty(message.messageId)) handleFunctionCall(message);
-			else handleFunctionReturn(message);
+		{				
+			return sendMessage(FUNCTION_CALL_METHOD, LocalConnectionMessage.create(name, parameters));
 		}
 		
 		protected function handleFunctionCall(message:LocalConnectionMessage) : void
@@ -51,7 +52,7 @@ package com.dubitplatform.localConnection
 			{
 				message.body = handlerFunction.apply(null, message.functionArguments);
 				
-				sendMessage(message, false);
+				sendMessage(FUNCTION_RETURN_METHOD, message, false);
 			}
 			else
 			{
@@ -59,7 +60,7 @@ package com.dubitplatform.localConnection
 			}
 		}
 		
-		protected function handleFunctionReturn(message:LocalConnectionMessage) : void
+		protected function handleFunctionReturn(message:IMessage) : void
 		{
 			var responseHandler:AsyncToken = sentMessageTokens[message.messageId];
 			
@@ -71,18 +72,16 @@ package com.dubitplatform.localConnection
 			}
 		}
 		
-		protected function sendMessage(message:LocalConnectionMessage, expectResponse:Boolean = true) : AsyncToken
+		protected function sendMessage(methodName:String, message:IMessage, expectResponse:Boolean = true) : AsyncToken
 		{
 			if(!localConnectionService.connected) throw new IllegalOperationError("LocalConnectionService is not yet connected");
 			
+			var token:AsyncToken = new AsyncToken(message);		
 			var connectionManager:LocalConnectionMananger = localConnectionService.connectionManager;
-			
-			var token:AsyncToken = new AsyncToken(message);
+
+			connectionManager.outboundConnection.send(connectionManager.outboundConnectionName, methodName, message);
 			
 			if(expectResponse) sentMessageTokens[message.messageId] = token;
-			
-			connectionManager.outboundConnection.send(
-				connectionManager.outboundConnectionName, message.functionName, message)
 			
 			return token;
 		}		

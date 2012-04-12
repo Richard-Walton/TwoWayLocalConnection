@@ -1,5 +1,6 @@
 package com.dubitplatform.localConnection
 {
+	import flash.events.Event;
 	import flash.events.EventDispatcher;
 	
 	public class LocalConnectionService extends EventDispatcher
@@ -17,11 +18,31 @@ package com.dubitplatform.localConnection
 			
 			connectionManager.inboundConnection.client = _clientProxy
 			connectionManager.outboundConnection.client = _clientProxy;
+			
+			connectionManager.addEventListener(Event.INIT, function(e:Event) : void
+			{
+				trace("INIT");
+			});
+			
+			connectionManager.addEventListener(Event.CONNECT, function(e:Event) : void
+			{
+				trace("CONNECTED");
+			});
+			
+			connectionManager.addEventListener(Event.CLOSE, function(e:Event) : void
+			{
+				trace("CLOSED");
+			})
 		}
 		
 		public function connect(connectionName:String) : void
 		{
 			connectionManager.connect(connectionName);
+		}
+		
+		public function close() : void
+		{
+			connectionManager.close();
 		}
 		
 		public function get connectionManager() : LocalConnectionMananger
