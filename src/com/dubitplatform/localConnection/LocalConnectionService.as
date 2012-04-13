@@ -1,11 +1,8 @@
 package com.dubitplatform.localConnection
 {
-	import avmplus.getQualifiedClassName;
-	
 	import flash.events.EventDispatcher;
 	import flash.events.StatusEvent;
 	import flash.net.LocalConnection;
-	import flash.net.registerClassAlias;
 	import flash.utils.setTimeout;
 	
 	[Event(name="status", type="flash.events.StatusEvent")]
@@ -22,6 +19,7 @@ package com.dubitplatform.localConnection
 		private var _inboundConnection:LocalConnection;
 		private var _outboundConnection:LocalConnection;
 		
+		private var _connectionName:String;
 		private var _inboundConnectionName:String;
 		private var _outboundConnectionName:String;
 		
@@ -31,9 +29,7 @@ package com.dubitplatform.localConnection
 		private var _clientProxy:ClientProxy;
 		
 		public function LocalConnectionService(localClient:Object = null)
-		{			
-			registerClassAlias(getQualifiedClassName(FunctionCallMessage), FunctionCallMessage);
-			
+		{						
 			_localClient = localClient;
 			_clientProxy = new ClientProxy(this);
 			_inboundConnection = createAndSetupLocalConnection(_clientProxy);			
@@ -51,26 +47,69 @@ package com.dubitplatform.localConnection
 			return localConnection;
 		}
 		
-		internal function get inboundConnection() : LocalConnection
+		/**
+		 * @see flash.net.LocalConnection#allowDomain()
+		 */  
+		public function allowDomain(... domains) : void
 		{
-			return _inboundConnection;
+			inboundConnection.allowDomain.apply(null, domains);
+			outboundConnection.allowDomain.apply(null, domains);
 		}
 		
-		internal function get outboundConnection() : LocalConnection
+		/**
+		 * @see flash.net.LocalConnection#allowInsecureDomain()
+		 */          
+		public function allowInsecureDomain(... domains) : void
 		{
-			return _outboundConnection;
+			inboundConnection.allowInsecureDomain.apply(null, domains);
+			outboundConnection.allowInsecureDomain.apply(null, domains);
 		}
 		
-		internal function get inboundConnectionName() : String
+		/**
+		 * @see flash.net.LocalConnection#connect()
+		 */   
+		public function connect(connectionName:String) : void
 		{
-			return _inboundConnectionName;
+			if(status != IDLE) return;
+
+			updateStatus(CONNECTING);
+			
+			if(connectionName.charAt(0) != "_") connectionName = "_" + connectionName;
+			
+			_connectionName = connectionName;
+			
+			attemptToConnect(connectionName + "_1", connectionName + "_2");
 		}
 		
-		internal function get outboundConnectionName() : String
+		public function get connectionName() : String
 		{
-			return _outboundConnectionName;
+			return _connectionName;
 		}
-				
+		
+		public function get connected() : Boolean
+		{
+			return status == CONNECTED || status == CLOSING;
+		}
+		
+		/**
+		 * @see flash.net.LocalConnection#close()
+		 */   
+		public function close(reconnect:Boolean = false) : void
+		{
+			updateStatus(CLOSING);
+			
+			try { inboundConnection.close() }
+			catch(e:ArgumentError) {}
+			
+			var lastConnectionName:String = connectionName
+			
+			_connectionName =_inboundConnectionName = _outboundConnectionName = null;
+			
+			updateStatus(IDLE);
+			
+			if(reconnect) connect(lastConnectionName);
+		}
+		
 		/**
 		 * @see flash.net.LocalConnection#client()
 		 */   
@@ -98,92 +137,54 @@ package com.dubitplatform.localConnection
 		{
 			_status = newStatus;
 			
-			dispatchEvent(new StatusEvent(StatusEvent.STATUS, false, false, status, status));
+			dispatchEvent(new StatusEvent(StatusEvent.STATUS, false, false, status, StatusEvent.STATUS));
 		}
 		
-		/**
-		 * @see flash.net.LocalConnection#allowDomain()
-		 */  
-		public function allowDomain(... domains) : void
+		internal function get inboundConnection() : LocalConnection
 		{
-			inboundConnection.allowDomain.apply(null, domains);
-			outboundConnection.allowDomain.apply(null, domains);
+			return _inboundConnection;
 		}
 		
-		/**
-		 * @see flash.net.LocalConnection#allowInsecureDomain()
-		 */          
-		public function allowInsecureDomain(... domains) : void
+		internal function get outboundConnection() : LocalConnection
 		{
-			inboundConnection.allowInsecureDomain.apply(null, domains);
-			outboundConnection.allowInsecureDomain.apply(null, domains);
+			return _outboundConnection;
 		}
 		
-		/**
-		 * @see flash.net.LocalConnection#connect()
-		 */   
-		public function connect(connectionName:String) : void
+		internal function get inboundConnectionName() : String
 		{
-			if(status != IDLE) return;
-			
-			updateStatus(CONNECTING);
-			
-			if(connectionName.charAt(0) != "_") connectionName = "_" + connectionName;
-			
-			attemptToConnect(connectionName + "_1", connectionName + "_2");
+			return _inboundConnectionName;
 		}
 		
-		public function get connected() : Boolean
+		internal function get outboundConnectionName() : String
 		{
-			return status == CONNECTED || status == CLOSING;
-		}
-		
-		/**
-		 * @see flash.net.LocalConnection#close()
-		 */   
-		public function close() : void
-		{
-			updateStatus(CLOSING);
-			
-			try { inboundConnection.close() }
-			catch(e:ArgumentError) {}
-			
-			_inboundConnectionName = null;
-			_outboundConnectionName = null;
-			
-			updateStatus(IDLE);
+			return _outboundConnectionName;
 		}
 		
 		protected function attemptToConnect(connectionA:String, connectionB:String) : void
 		{
 			if(status != CONNECTING) return;
 			
-			var successFunction:Function = function(successfulConnectionName:String) : void
+			var successfulConnectionName:String = tryConnectWith(connectionA) || tryConnectWith(connectionB);
+			
+			if(successfulConnectionName)
 			{
 				_inboundConnectionName = successfulConnectionName;
 				_outboundConnectionName = successfulConnectionName == connectionA ? connectionB : connectionA;
 				
 				updateStatus(WAITING_FOR_REMOTE_CLIENT);	
-			};
-			
-			if(!(tryConnectWith(connectionA, successFunction) || tryConnectWith(connectionB, successFunction)))
+			}
+			else
 			{
-				successFunction = null;
-				
 				setTimeout(attemptToConnect, RETRY_CONNECTION_INTERVAL, connectionA, connectionB);
 			}
 		}
 		
-		private function tryConnectWith(connectionName:String, successFunction:Function) : Boolean
-		{	
-			var success:Boolean = true;
-			
+		private function tryConnectWith(connectionName:String) : String
+		{				
 			try { inboundConnection.connect(connectionName) }
-			catch(e:ArgumentError) { success = false }
+			catch(e:ArgumentError) { connectionName = null }
 			
-			if(success) successFunction(connectionName);
-			
-			return success;
+			return connectionName;
 		}
 	}
 }

@@ -2,9 +2,11 @@ package com.dubitplatform.localConnection
 {
 	import flash.errors.IllegalOperationError;
 	import flash.events.StatusEvent;
+	import flash.net.registerClassAlias;
 	import flash.utils.Proxy;
 	import flash.utils.clearInterval;
 	import flash.utils.flash_proxy;
+	import flash.utils.getQualifiedClassName;
 	import flash.utils.getTimer;
 	import flash.utils.setInterval;
 	
@@ -37,6 +39,8 @@ package com.dubitplatform.localConnection
 		
 		public function ClientProxy(localConnectionService:LocalConnectionService)
 		{
+			registerClassAlias(getQualifiedClassName(FunctionCallMessage), FunctionCallMessage);
+			
 			this.localConnectionService = localConnectionService;
 			
 			sentMessageTokens = {};
@@ -146,7 +150,7 @@ package com.dubitplatform.localConnection
 			// Connection timeout
 			if(localConnectionService.connected && (currentTime - lastAliveTime) > TIMEOUT)
 			{
-				localConnectionService.close();
+				localConnectionService.close(true);
 			}
 		}
 	}
