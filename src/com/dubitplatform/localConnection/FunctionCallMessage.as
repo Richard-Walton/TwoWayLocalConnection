@@ -9,7 +9,7 @@ package com.dubitplatform.localConnection
 		private static const FUNCTION_NAME_HEADER:String = "f";
 		private static const FUNCTION_ARGUMENTS_HEADER:String = "a";
 		
-		public static function create(functionName:String, functionArguments:Array) : FunctionCallMessage
+		public static function create(functionName:String, functionArguments:Array = null) : FunctionCallMessage
 		{
 			var message:FunctionCallMessage = new FunctionCallMessage();
 			
@@ -28,6 +28,11 @@ package com.dubitplatform.localConnection
 		public function get functionArguments() : Array
 		{
 			return headers[FUNCTION_ARGUMENTS_HEADER];
+		}
+		
+		public function set functionArguments(value:Array) : void
+		{
+			headers[FUNCTION_ARGUMENTS_HEADER] = value;
 		}
 	}
 }

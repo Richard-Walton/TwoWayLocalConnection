@@ -2,7 +2,9 @@ package com.dubitplatform.localConnection
 {
 	import flash.errors.IllegalOperationError;
 	import flash.events.StatusEvent;
+	import flash.net.LocalConnection;
 	import flash.net.registerClassAlias;
+	import flash.utils.ByteArray;
 	import flash.utils.Proxy;
 	import flash.utils.clearInterval;
 	import flash.utils.flash_proxy;
@@ -33,17 +35,21 @@ package com.dubitplatform.localConnection
 		private var lastAliveTime:int = -1;
 		
 		private var sentMessageTokens:Object;
+		private var messageBuffers:Object;
 		private var messageHandlers:Object;
+		
 		
 		private var localConnectionService:LocalConnectionService;
 		
 		public function ClientProxy(localConnectionService:LocalConnectionService)
 		{
 			registerClassAlias(getQualifiedClassName(FunctionCallMessage), FunctionCallMessage);
+			registerClassAlias(getQualifiedClassName(MessagePacket), MessagePacket);
 			
 			this.localConnectionService = localConnectionService;
 			
 			sentMessageTokens = {};
+			messageBuffers = {};
 			
 			messageHandlers = {};
 			messageHandlers[FUNCTION_CALL_METHOD] = handleFunctionCall;
@@ -58,7 +64,7 @@ package com.dubitplatform.localConnection
 				if(localConnectionService.status == LocalConnectionService.WAITING_FOR_REMOTE_CLIENT)
 				{
 					timeoutIntervalID = setInterval(checkForTimeouts, TIMEOUT_CHECK_INTERVAL);
-					sendAliveIntervalID = setInterval(sendMessage, KEEP_ALIVE_INTERVAL, NOTIFY_ALIVE_METHOD);
+					sendAliveIntervalID = setInterval(sendMessage, KEEP_ALIVE_INTERVAL, FunctionCallMessage.create(NOTIFY_ALIVE_METHOD));
 				}
 				else if(localConnectionService.status == LocalConnectionService.CLOSING)
 				{
@@ -71,7 +77,7 @@ package com.dubitplatform.localConnection
 		// incoming messages
 		override flash_proxy function getProperty(name:*) : *
 		{	
-			return messageHandlers[name];
+			return handleMessagePacket as Function; // cast to stop compiler warning
 		}
 		
 		// outgoing messages
@@ -79,43 +85,61 @@ package com.dubitplatform.localConnection
 		{		
 			if(!localConnectionService.connected) throw new IllegalOperationError("LocalConnectionService is not connected");
 			
-			return sendMessage(FUNCTION_CALL_METHOD, FunctionCallMessage.create(name, parameters));
+			var functionCall:FunctionCallMessage = FunctionCallMessage.create(FUNCTION_CALL_METHOD)
+			return sendRequest(FunctionCallMessage.create(FUNCTION_CALL_METHOD, name, parameters));
 		}
 		
-		protected function handleFunctionCall(message:FunctionCallMessage) : void
+		protected function handleFunctionCall(messageId:String, functionName:String, params:Array) : void
 		{
-			var handlerFunction:Function = localConnectionService.localClient[message.functionName];
+			var handlerFunction:Function = localConnectionService.localClient[functionName];
 			
-			message.body = handlerFunction.apply(null, message.functionArguments);
+			var returnValue:* = handlerFunction.apply(null, params);
 				
-			sendMessage(FUNCTION_RETURN_METHOD, message, false);
+			sendMessage(FunctionCallMessage.create(FUNCTION_RETURN_METHOD, [messageId, returnValue]));
 		}
 		
-		protected function handleFunctionReturn(message:FunctionCallMessage) : void
+		protected function handleFunctionReturn(messageId:String, returnValue:Object) : void
 		{
-			var responseHandler:AsyncToken = sentMessageTokens[message.messageId];
+			var responseHandler:AsyncToken = sentMessageTokens[messageId];
 			
-			if(responseHandler)
+			responseHandler.applyResult(ResultEvent.createEvent(returnValue, responseHandler, responseHandler.message));
+				
+			delete sentMessageTokens[messageId];
+		}
+		
+		protected function sendRequest(message:IMessage) : AsyncToken
+		{
+			sendMessage(message);
+			
+			return sentMessageTokens[message.messageId] = new AsyncToken(message);
+		}
+		
+		protected function sendMessage(message:FunctionCallMessage) : void
+		{				
+			for each(var packet:MessagePacket in MessagePacket.createFromMessage(message))
 			{
-				responseHandler.applyResult(ResultEvent.createEvent(message.body, responseHandler, responseHandler.message));
-				
-				delete sentMessageTokens[message.messageId];
+				localConnectionService.outboundConnection.send(localConnectionService.outboundConnectionName, "_", packet);
 			}
 		}
 		
-		protected function sendMessage(methodName:String, message:IMessage = null, expectResponse:Boolean = true) : AsyncToken
-		{			
-			var token:AsyncToken = null;
+		private function handleMessagePacket(messagePacket:MessagePacket) : void
+		{
+			var buffer:ByteArray = messageBuffers[messagePacket.messageId];
 			
-			if(message && expectResponse) sentMessageTokens[message.messageId] = token = new AsyncToken(message);
+			if(buffer == null) buffer = messageBuffers[messagePacket.messageId] = new ByteArray();
 			
-			var sendFunctionParams:Array = [localConnectionService.outboundConnectionName, methodName];
+			buffer.writeBytes(messagePacket.bytes);
 			
-			if(message) sendFunctionParams.push(message);
-			
-			localConnectionService.outboundConnection.send.apply(null, sendFunctionParams);
-			
-			return token;
+			if(buffer.length == messagePacket.totalSize)
+			{
+				delete messageBuffers[messagePacket.messageId];
+				
+				buffer.position = 0;
+				
+				var functionCallMessage:FunctionCallMessage = buffer.readObject();
+				
+				messageHandlers[functionCallMessage.functionName].apply(null, functionCallMessage.functionArguments);
+			}
 		}
 		
 		protected function handleNotifyAlive() : void
