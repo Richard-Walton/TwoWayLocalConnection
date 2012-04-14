@@ -17,6 +17,7 @@ package com.dubitplatform.localConnection
 	import mx.rpc.Fault;
 	import mx.rpc.events.FaultEvent;
 	import mx.rpc.events.ResultEvent;
+	import mx.utils.UIDUtil;
 	
 	use namespace flash_proxy;
 	use namespace mx_internal;
@@ -83,18 +84,19 @@ package com.dubitplatform.localConnection
 		{		
 			if(!service.connected) throw new IllegalOperationError("LocalConnectionService is not connected");
 			
-			var functionCall:FunctionCallMessage = FunctionCallMessage.create(FUNCTION_CALL_METHOD);
+			var messageId:String = UIDUtil.createUID();
+			var messageParms:Array = [messageId, String(name), parameters];
 			
-			functionCall.functionArguments = [functionCall.messageId, String(name), parameters];
+			var functionCall:FunctionCallMessage = FunctionCallMessage.create(FUNCTION_CALL_METHOD, messageParms);
+		
+			functionCall.messageId = messageId;
 			
 			return sendRequest(functionCall);
 		}
 		
 		protected function handleFunctionCall(messageId:String, functionName:String, params:Array) : void
 		{
-			var handlerFunction:Function = service.localClient[functionName];
-			
-			var returnValue:* = handlerFunction.apply(null, params);
+			var returnValue:* = service.localClient[functionName].apply(null, params);
 				
 			sendMessage(FunctionCallMessage.create(FUNCTION_RETURN_METHOD, [messageId, returnValue]));
 		}
@@ -161,10 +163,8 @@ package com.dubitplatform.localConnection
 			{
 				var message:IMessage = token.message;
 				
-				var timeSinceMessageSent:int = currentTime - message.timestamp;
-				
-				if(timeSinceMessageSent > TIMEOUT)
-				{					
+				if((currentTime - message.timestamp) > TIMEOUT)
+				{
 					token.applyFault(FaultEvent.createEvent(new Fault("timeout", "timeout"), token, message));
 					
 					delete sentMessageTokens[message.messageId];
