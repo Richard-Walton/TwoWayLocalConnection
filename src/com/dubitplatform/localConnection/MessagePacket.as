@@ -10,7 +10,7 @@ package com.dubitplatform.localConnection
 		
 		public var messageId:String;
 		public var bytes:ByteArray;
-		public var completeMessageSize:int;
+		public var totalPackets:int;
 		
 		public static function createPackets(message:IMessage) : Vector.<MessagePacket>
 		{
@@ -19,9 +19,10 @@ package com.dubitplatform.localConnection
 			messageBytes.writeObject(message);
 			messageBytes.position = 0;
 			
-			var packets:Vector.<MessagePacket> = new Vector.<MessagePacket>();
+			var totalPackets:int = Math.ceil(messageBytes.length / MAX_PACKET_SIZE);
+			var packets:Vector.<MessagePacket> = new Vector.<MessagePacket>(totalPackets);
 			
-			while(messageBytes.position != messageBytes.length)
+			for(var i:int = 0; i < totalPackets; i++)
 			{
 				var packetSize:int = Math.min(MAX_PACKET_SIZE, messageBytes.length - messageBytes.position);
 				
@@ -29,7 +30,7 @@ package com.dubitplatform.localConnection
 				
 				packetBytes.writeBytes(messageBytes, messageBytes.position, packetSize);
 				
-				packets.push(MessagePacket.create(message.messageId, packetBytes, messageBytes.length));
+				packets[i] = MessagePacket.create(message.messageId, packetBytes, totalPackets);
 				
 				messageBytes.position += packetBytes.length;
 			}
@@ -39,13 +40,13 @@ package com.dubitplatform.localConnection
 			return packets;
 		}
 		
-		private static function create(messageId:String, bytes:ByteArray, completeMessageSize:int) : MessagePacket
+		private static function create(messageId:String, bytes:ByteArray, totalPackets:int) : MessagePacket
 		{
 			var messagePacket:MessagePacket = new MessagePacket();
 			
 			messagePacket.messageId = messageId;
 			messagePacket.bytes = bytes;
-			messagePacket.completeMessageSize = completeMessageSize;
+			messagePacket.totalPackets = totalPackets;
 			
 			return messagePacket;
 		}

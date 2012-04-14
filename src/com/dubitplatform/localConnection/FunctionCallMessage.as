@@ -1,5 +1,6 @@
 package com.dubitplatform.localConnection
 {
+	import flash.utils.ByteArray;
 	import flash.utils.getTimer;
 	
 	import mx.messaging.messages.AbstractMessage;
@@ -22,6 +23,24 @@ package com.dubitplatform.localConnection
 			message.timestamp = getTimer();
 			
 			return message;
+		}
+		
+		public static function createFromPackets(packets:Vector.<MessagePacket>) : FunctionCallMessage
+		{
+			var messageBytes:ByteArray = new ByteArray();
+			
+			for(var i:int = 0; i < packets.length; i++)
+			{
+				messageBytes.writeBytes(packets[i].bytes);
+			}
+			
+			messageBytes.position = 0;
+			
+			var functionCallMessage:FunctionCallMessage = messageBytes.readObject();
+			
+			messageBytes.clear();
+			
+			return functionCallMessage;
 		}
 		
 		public function get functionName() : String

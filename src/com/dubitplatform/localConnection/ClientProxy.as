@@ -3,7 +3,6 @@ package com.dubitplatform.localConnection
 	import flash.errors.IllegalOperationError;
 	import flash.events.StatusEvent;
 	import flash.net.registerClassAlias;
-	import flash.utils.ByteArray;
 	import flash.utils.Proxy;
 	import flash.utils.clearInterval;
 	import flash.utils.flash_proxy;
@@ -125,23 +124,19 @@ package com.dubitplatform.localConnection
 			}
 		}
 		
-		private function handleMessagePacket(messagePacket:MessagePacket) : void
+		private function handleMessagePacket(packet:MessagePacket) : void
 		{
-			var buffer:ByteArray = messageBuffers[messagePacket.messageId];
+			var packets:Vector.<MessagePacket> = messageBuffers[packet.messageId];
 			
-			if(buffer == null) buffer = messageBuffers[messagePacket.messageId] = new ByteArray();
+			if(packets == null) packets = messageBuffers[packet.messageId] = new Vector.<MessagePacket>();
 			
-			buffer.writeBytes(messagePacket.bytes);
+			packets.push(packet);
 			
-			if(buffer.length == messagePacket.completeMessageSize)
+			if(packets.length == packet.totalPackets)
 			{
-				delete messageBuffers[messagePacket.messageId];
+				delete messageBuffers[packet.messageId];
 				
-				buffer.position = 0;
-				
-				var functionCallMessage:FunctionCallMessage = buffer.readObject();
-				
-				buffer.clear();
+				var functionCallMessage:FunctionCallMessage = FunctionCallMessage.createFromPackets(packets);
 				
 				messageHandlers[functionCallMessage.functionName].apply(null, functionCallMessage.functionArguments);
 			}
