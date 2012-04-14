@@ -10,20 +10,9 @@ package com.dubitplatform.localConnection
 		
 		public var messageId:String;
 		public var bytes:ByteArray;
-		public var totalSize:int;
+		public var completeMessageSize:int;
 		
-		public static function create(messageId:String, bytes:ByteArray, totalSize:int) : MessagePacket
-		{
-			var messagePacket:MessagePacket = new MessagePacket();
-			
-			messagePacket.messageId = messageId;
-			messagePacket.bytes = bytes;
-			messagePacket.totalSize = totalSize;
-			
-			return messagePacket;
-		}
-		
-		public static function createFromMessage(message:IMessage) : Vector.<MessagePacket>
+		public static function createPackets(message:IMessage) : Vector.<MessagePacket>
 		{
 			var messageBytes:ByteArray = new ByteArray();
 			
@@ -45,7 +34,20 @@ package com.dubitplatform.localConnection
 				messageBytes.position += packetBytes.length;
 			}
 			
+			messageBytes.clear();
+			
 			return packets;
+		}
+		
+		private static function create(messageId:String, bytes:ByteArray, completeMessageSize:int) : MessagePacket
+		{
+			var messagePacket:MessagePacket = new MessagePacket();
+			
+			messagePacket.messageId = messageId;
+			messagePacket.bytes = bytes;
+			messagePacket.completeMessageSize = completeMessageSize;
+			
+			return messagePacket;
 		}
 	}
 }
