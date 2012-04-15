@@ -25,7 +25,6 @@ package com.dubitplatform.localConnection
 		private static const RETRY_CONNECTION_INTERVAL:int = 500;
 		
 		private var _connectionName:String;
-		private var _inboundConnectionName:String;
 		private var _outboundConnectionName:String;
 		
 		private var _status:String;
@@ -64,6 +63,11 @@ package com.dubitplatform.localConnection
 			return _connectionName;
 		}
 		
+		public function get outboundConnectionName() : String
+		{
+			return _outboundConnectionName;
+		}
+		
 		public function get connected() : Boolean
 		{
 			return status == CONNECTED || status == CLOSING;
@@ -81,7 +85,7 @@ package com.dubitplatform.localConnection
 			
 			var lastConnectionName:String = connectionName
 			
-			_connectionName =_inboundConnectionName = _outboundConnectionName = null;
+			_connectionName = _outboundConnectionName = null;
 			
 			updateStatus(IDLE);
 		}
@@ -113,27 +117,16 @@ package com.dubitplatform.localConnection
 			
 			dispatchEvent(new StatusEvent(StatusEvent.STATUS, false, false, status, StatusEvent.STATUS));
 		}
-
-		internal function get inboundConnectionName() : String
-		{
-			return _inboundConnectionName;
-		}
-		
-		internal function get outboundConnectionName() : String
-		{
-			return _outboundConnectionName;
-		}
 		
 		private function attemptToConnect(connectionA:String, connectionB:String) : void
 		{
 			if(status != CONNECTING) return;
 			
-			var successfulConnectionName:String = tryConnectWith(connectionA) || tryConnectWith(connectionB);
+			var inboundConnectionName:String = tryConnectWith(connectionA) || tryConnectWith(connectionB);
 			
-			if(successfulConnectionName)
+			if(inboundConnectionName)
 			{
-				_inboundConnectionName = successfulConnectionName;
-				_outboundConnectionName = successfulConnectionName == connectionA ? connectionB : connectionA;
+				_outboundConnectionName = inboundConnectionName == connectionA ? connectionB : connectionA;
 				
 				updateStatus(WAITING_FOR_REMOTE_CLIENT);	
 			}
