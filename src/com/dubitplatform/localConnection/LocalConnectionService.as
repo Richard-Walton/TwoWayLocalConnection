@@ -54,8 +54,6 @@ package com.dubitplatform.localConnection
 
 			updateStatus(CONNECTING);
 			
-			if(connectionName.charAt(0) != "_") connectionName = "_" + connectionName;
-			
 			_connectionName = connectionName;
 			
 			attemptToConnect(connectionName + "_1", connectionName + "_2");
