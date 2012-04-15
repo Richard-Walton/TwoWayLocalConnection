@@ -59,23 +59,17 @@ package com.dubitplatform.localConnection
 			
 			service.addEventListener(StatusEvent.STATUS, function(e:StatusEvent) : void
 			{
-				if(service.status == LocalConnectionService.WAITING_FOR_REMOTE_CLIENT)
+				if(e.code == LocalConnectionService.WAITING_FOR_REMOTE_CLIENT)
 				{
 					timeoutIntervalID = setInterval(checkForTimeouts, TIMEOUT_CHECK_INTERVAL);
 					sendAliveIntervalID = setInterval(sendMessage, SEND_KEEP_ALIVE_INTERVAL, FunctionCallMessage.create(NOTIFY_ALIVE_METHOD));
 				}
-				else if(service.status == LocalConnectionService.CLOSING)
+				else if(e.code == LocalConnectionService.CLOSING)
 				{
 					clearInterval(timeoutIntervalID);
 					clearInterval(sendAliveIntervalID);
 				}
-			});			
-		}
-		
-		// incoming messages
-		override flash_proxy function getProperty(name:*) : *
-		{	
-			return handleMessagePacket as Function; // cast to stop compiler warning
+			});
 		}
 		
 		// outgoing messages
@@ -120,11 +114,11 @@ package com.dubitplatform.localConnection
 		{				
 			for each(var packet:MessagePacket in MessagePacket.createPackets(message))
 			{
-				service.outboundConnection.send(service.outboundConnectionName, "_", packet);
+				service.outboundConnection.send(service.outboundConnectionName, "handleMessagePacket", packet);
 			}
 		}
 		
-		private function handleMessagePacket(packet:MessagePacket) : void
+		public function handleMessagePacket(packet:MessagePacket) : void
 		{
 			var packets:Vector.<MessagePacket> = messageBuffers[packet.messageId];
 			
@@ -169,7 +163,8 @@ package com.dubitplatform.localConnection
 			// Connection timeout
 			if(service.connected && (currentTime - lastAliveTime) > TIMEOUT)
 			{
-				service.close(true);
+				service.updateStatus(LocalConnectionService.TIMED_OUT);
+				service.connect(service.connectionName); // Attempt to re-connect
 			}
 		}
 	}

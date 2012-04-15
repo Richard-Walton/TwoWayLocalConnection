@@ -7,15 +7,15 @@ package com.dubitplatform.localConnection
 
 	internal class FunctionCallMessage extends AbstractMessage
 	{		
-		private static const FUNCTION_NAME_HEADER:String = "f";
-		private static const FUNCTION_ARGUMENTS_HEADER:String = "a";
+		private static const FUNCTION_NAME:String = "f";
+		private static const FUNCTION_ARGUMENTS:String = "a";
 		
 		public static function create(functionName:String, functionArguments:Array = null) : FunctionCallMessage
 		{		
 			var body:Object = {};
 			
-			body[FUNCTION_NAME_HEADER] = functionName;
-			body[FUNCTION_ARGUMENTS_HEADER] = functionArguments;
+			body[FUNCTION_NAME] = functionName;
+			body[FUNCTION_ARGUMENTS] = functionArguments;
 			
 			var message:FunctionCallMessage = new FunctionCallMessage();
 			
@@ -36,21 +36,20 @@ package com.dubitplatform.localConnection
 			
 			messageBytes.position = 0;
 			
-			var functionCallMessage:FunctionCallMessage = messageBytes.readObject();
+			try { return messageBytes.readObject() }
+			finally { messageBytes.clear(); }
 			
-			messageBytes.clear();
-			
-			return functionCallMessage;
+			return null; // Just here to make the compiler work!  There is no way this line will ever be executed.
 		}
 		
 		public function get functionName() : String
 		{
-			return body[FUNCTION_NAME_HEADER];
+			return body[FUNCTION_NAME];
 		}
 		
 		public function get functionArguments() : Array
 		{
-			return body[FUNCTION_ARGUMENTS_HEADER];
+			return body[FUNCTION_ARGUMENTS];
 		}
 	}
 }

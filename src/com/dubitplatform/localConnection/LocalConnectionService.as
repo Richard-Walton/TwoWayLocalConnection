@@ -12,6 +12,7 @@ package com.dubitplatform.localConnection
 		public static const CONNECTING:String = "connecting";
 		public static const WAITING_FOR_REMOTE_CLIENT:String = "waitingForRemoteClient";
 		public static const CONNECTED:String = "connected";
+		public static const TIMED_OUT:String = "timedOut";
 		public static const CLOSING:String = "closing";
 		
 		private static const RETRY_CONNECTION_INTERVAL:int = 500;
@@ -70,7 +71,7 @@ package com.dubitplatform.localConnection
 		 */   
 		public function connect(connectionName:String) : void
 		{
-			if(status != IDLE) return;
+			if(status != IDLE) close();
 
 			updateStatus(CONNECTING);
 			
@@ -94,7 +95,7 @@ package com.dubitplatform.localConnection
 		/**
 		 * @see flash.net.LocalConnection#close()
 		 */   
-		public function close(reconnect:Boolean = false) : void
+		public function close() : void
 		{
 			updateStatus(CLOSING);
 			
@@ -106,8 +107,6 @@ package com.dubitplatform.localConnection
 			_connectionName =_inboundConnectionName = _outboundConnectionName = null;
 			
 			updateStatus(IDLE);
-			
-			if(reconnect) connect(lastConnectionName);
 		}
 		
 		/**
@@ -160,7 +159,7 @@ package com.dubitplatform.localConnection
 			return _outboundConnectionName;
 		}
 		
-		protected function attemptToConnect(connectionA:String, connectionB:String) : void
+		private function attemptToConnect(connectionA:String, connectionB:String) : void
 		{
 			if(status != CONNECTING) return;
 			
