@@ -1,12 +1,19 @@
 package com.dubitplatform.localConnection
 {
-	import flash.events.EventDispatcher;
 	import flash.events.StatusEvent;
 	import flash.net.LocalConnection;
 	import flash.utils.setTimeout;
 	
-	[Event(name="status", type="flash.events.StatusEvent")]
-	public class LocalConnectionService extends EventDispatcher
+	/**
+	 * The LocalConnectionServce allows two connected clients to make asynchronous function calls upon each other.
+	 * 
+	 * To make a call to the remote client use the <i>remoteClient</i> object.  Any call made on the remote client 
+	 * object send a message to the connected client and return an AsyncToken.  When the remote client sends its response
+	 * the token will be notified.
+	 * 
+	 * @author richard.walton@dubitlimited.com
+	 */
+	public class LocalConnectionService extends LocalConnection
 	{	
 		public static const IDLE:String = "idle";
 		public static const CONNECTING:String = "connecting";
@@ -17,9 +24,6 @@ package com.dubitplatform.localConnection
 		
 		private static const RETRY_CONNECTION_INTERVAL:int = 500;
 		
-		private var _inboundConnection:LocalConnection;
-		private var _outboundConnection:LocalConnection;
-		
 		private var _connectionName:String;
 		private var _inboundConnectionName:String;
 		private var _outboundConnectionName:String;
@@ -27,49 +31,24 @@ package com.dubitplatform.localConnection
 		private var _status:String;
 		
 		private var _localClient:Object;
-		private var _clientProxy:ClientProxy;
 		
 		public function LocalConnectionService(localClient:Object = null)
 		{						
-			_localClient = localClient;
-			_clientProxy = new ClientProxy(this);
-			_inboundConnection = createAndSetupLocalConnection(_clientProxy);			
-			_outboundConnection = createAndSetupLocalConnection(_clientProxy);
+			this.client = localClient;
+			super.client = new ClientProxy(this);
+			
+			addEventListener(StatusEvent.STATUS, function(e:StatusEvent) : void
+			{
+				if(e.code == null) e.stopImmediatePropagation();
+			});
+			
 			_status = IDLE;
 		}
 		
-		private function createAndSetupLocalConnection(client:Object) : LocalConnection
-		{
-			var localConnection:LocalConnection = new LocalConnection();
-
-			localConnection.client = client;
-			localConnection.addEventListener(StatusEvent.STATUS, function(e:StatusEvent) : void {});
-			
-			return localConnection;
-		}
-		
 		/**
-		 * @see flash.net.LocalConnection#allowDomain()
-		 */  
-		public function allowDomain(... domains) : void
-		{
-			inboundConnection.allowDomain.apply(null, domains);
-			outboundConnection.allowDomain.apply(null, domains);
-		}
-		
-		/**
-		 * @see flash.net.LocalConnection#allowInsecureDomain()
-		 */          
-		public function allowInsecureDomain(... domains) : void
-		{
-			inboundConnection.allowInsecureDomain.apply(null, domains);
-			outboundConnection.allowInsecureDomain.apply(null, domains);
-		}
-		
-		/**
-		 * @see flash.net.LocalConnection#connect()
+		 * @inhericDoc
 		 */   
-		public function connect(connectionName:String) : void
+		override public function connect(connectionName:String) : void
 		{
 			if(status != IDLE) close();
 
@@ -93,13 +72,13 @@ package com.dubitplatform.localConnection
 		}
 		
 		/**
-		 * @see flash.net.LocalConnection#close()
+		 * @inhericDoc
 		 */   
-		public function close() : void
+		override public function close() : void
 		{
 			updateStatus(CLOSING);
 			
-			try { inboundConnection.close() }
+			try { super.close() }
 			catch(e:ArgumentError) {}
 			
 			var lastConnectionName:String = connectionName
@@ -109,22 +88,20 @@ package com.dubitplatform.localConnection
 			updateStatus(IDLE);
 		}
 		
-		/**
-		 * @see flash.net.LocalConnection#client()
-		 */   
-		public function get localClient() : Object
+		[Bindable]
+		override public function get client() : Object
 		{
 			return _localClient;
 		}
 		
-		public function set localClient(value:Object) : void
+		override public function set client(value:Object) : void
 		{
 			_localClient = value;
 		}
 		
 		public function get remoteClient() : Object
 		{
-			return _clientProxy;
+			return super.client;
 		}
 		
 		public function get status() : String
@@ -138,17 +115,7 @@ package com.dubitplatform.localConnection
 			
 			dispatchEvent(new StatusEvent(StatusEvent.STATUS, false, false, status, StatusEvent.STATUS));
 		}
-		
-		internal function get inboundConnection() : LocalConnection
-		{
-			return _inboundConnection;
-		}
-		
-		internal function get outboundConnection() : LocalConnection
-		{
-			return _outboundConnection;
-		}
-		
+
 		internal function get inboundConnectionName() : String
 		{
 			return _inboundConnectionName;
@@ -180,7 +147,7 @@ package com.dubitplatform.localConnection
 		
 		private function tryConnectWith(connectionName:String) : String
 		{				
-			try { inboundConnection.connect(connectionName) }
+			try { super.connect(connectionName) }
 			catch(e:ArgumentError) { connectionName = null }
 			
 			return connectionName;

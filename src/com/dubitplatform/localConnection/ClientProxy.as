@@ -89,7 +89,7 @@ package com.dubitplatform.localConnection
 		
 		protected function handleFunctionCall(messageId:String, functionName:String, params:Array) : void
 		{
-			var returnValue:* = service.localClient[functionName].apply(null, params);
+			var returnValue:* = service.client[functionName].apply(null, params);
 				
 			sendMessage(FunctionCallMessage.create(FUNCTION_RETURN_METHOD, [messageId, returnValue]));
 		}
@@ -114,7 +114,7 @@ package com.dubitplatform.localConnection
 		{				
 			for each(var packet:MessagePacket in MessagePacket.createPackets(message))
 			{
-				service.outboundConnection.send(service.outboundConnectionName, "handleMessagePacket", packet);
+				service.send(service.outboundConnectionName, "handleMessagePacket", packet);
 			}
 		}
 		
