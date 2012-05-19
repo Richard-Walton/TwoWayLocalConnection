@@ -82,9 +82,7 @@ package com.dubitplatform.localConnection
 			
 			try { super.close() }
 			catch(e:ArgumentError) {}
-			
-			var lastConnectionName:String = connectionName
-			
+						
 			_connectionName = _outboundConnectionName = null;
 			
 			updateStatus(IDLE);
