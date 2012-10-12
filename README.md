@@ -5,7 +5,7 @@ Example:
 `
 package
 {
-	import com.dubitplatform.localConnection.LocalConnectionService;
+        import com.dubitplatform.localConnection.LocalConnectionService;
 	
 	import flash.events.StatusEvent;
 	
