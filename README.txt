@@ -2,7 +2,7 @@
 
 Example:
 
-package
+`package
 {
 	import com.dubitplatform.localConnection.LocalConnectionService;
 	
@@ -58,4 +58,4 @@ package
 			return input * 2;
 		}
 	}
-}
+}`
