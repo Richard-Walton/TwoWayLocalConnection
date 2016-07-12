@@ -1,7 +1,7 @@
 ﻿This project extends the actionscript LocalConnection class to add the ability to make to make asynchronous function calls between two connected clients.  Additionally, messages sent between two connected clients are not subject to the 40KB limit imposed by the standard LocalConnection class:
 
 Example:
-
+```
 package
 {
         import com.dubitplatform.localConnection.LocalConnectionService;
@@ -59,3 +59,4 @@ package
 		}
 	}
 }
+```
